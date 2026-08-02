@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ArrowRight, Download } from 'lucide-react'
-import { SAMPLE_PLAYERS } from '../data/players'
+import { DEFAULT_NEW_PLAYER, SAMPLE_PLAYERS } from '../data/players'
 import { requestAiKitSwap } from '../lib/aiKitSwap'
 import PhotoSlot, { ResultCompare, WorkingOverlay, useObjectUrl } from './PhotoSlot'
 
@@ -8,7 +8,7 @@ export default function Studio() {
   const [referenceFile, setReferenceFile] = useState(null)
   const [referenceSample, setReferenceSample] = useState(SAMPLE_PLAYERS[0].photo)
   const [playerFile, setPlayerFile] = useState(null)
-  const [playerSample, setPlayerSample] = useState(SAMPLE_PLAYERS[1].photo)
+  const [playerSample, setPlayerSample] = useState(DEFAULT_NEW_PLAYER.photo)
 
   const referenceObject = useObjectUrl(referenceFile)
   const playerObject = useObjectUrl(playerFile)
@@ -94,11 +94,11 @@ export default function Studio() {
           }}
           onClear={() => {
             setPlayerFile(null)
-            setPlayerSample(null)
+            setPlayerSample(DEFAULT_NEW_PLAYER.photo)
             setBeforeUrl(null)
             setAfterUrl(null)
           }}
-          samples={SAMPLE_PLAYERS}
+          samples={[DEFAULT_NEW_PLAYER, ...SAMPLE_PLAYERS]}
           onSample={(s) => {
             setPlayerFile(null)
             setPlayerSample(s.photo)

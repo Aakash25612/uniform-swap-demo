@@ -16,3 +16,10 @@ export const SAMPLE_PLAYERS = [
     photo: '/samples/player-brennan.png',
   },
 ]
+
+/** Default photo for the “New player” slot */
+export const DEFAULT_NEW_PLAYER = {
+  id: 'new-default',
+  name: 'New player',
+  photo: '/samples/new-player-default.png',
+}
