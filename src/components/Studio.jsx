@@ -2,12 +2,22 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { RefreshCw, Sparkles } from 'lucide-react'
 import { SAMPLE_PLAYERS } from '../data/players'
 import { TEAMS, getTeam } from '../data/teams'
+import { hexToRgb, luminance, runKitSwap } from '../lib/kitSwap'
+import { fileToImageUrl } from '../lib/loadImageFile'
+import { portraitToDataUrl } from '../lib/portrait'
 import CompareSlider from './CompareSlider'
 import PlayerPortrait from './PlayerPortrait'
 import ProcessingOverlay from './ProcessingOverlay'
 import TeamPicker from './TeamPicker'
 import UploadZone from './UploadZone'
 import { ExportBar } from './Sections'
+
+/** Light home kits need a structured kit swap — white jersey won't remap into a colored road kit. */
+function luminanceGapWeak(fromTeam, toTeam) {
+  const fromSec = luminance(hexToRgb(fromTeam.secondary))
+  const toPri = luminance(hexToRgb(toTeam.primary))
+  return fromSec > 200 && toPri < 160
+}
 
 export default function Studio() {
   const [playerId, setPlayerId] = useState(SAMPLE_PLAYERS[0].id)
@@ -16,7 +26,9 @@ export default function Studio() {
   const [file, setFile] = useState(null)
   const [previewUrl, setPreviewUrl] = useState(null)
   const [processing, setProcessing] = useState(false)
-  const [hasResult, setHasResult] = useState(false)
+  const [error, setError] = useState('')
+  const [beforeUrl, setBeforeUrl] = useState(null)
+  const [afterUrl, setAfterUrl] = useState(null)
   const [resultKey, setResultKey] = useState(0)
 
   const player = useMemo(
@@ -25,23 +37,52 @@ export default function Studio() {
   )
   const fromTeam = getTeam(fromTeamId)
   const toTeam = getTeam(toTeamId)
+  const hasResult = Boolean(beforeUrl && afterUrl)
 
   useEffect(() => {
-    if (!file) {
-      setPreviewUrl(null)
-      return undefined
+    let cancelled = false
+    let objectUrl = null
+
+    async function load() {
+      if (!file) {
+        setPreviewUrl(null)
+        return
+      }
+      try {
+        const url = await fileToImageUrl(file)
+        if (cancelled) {
+          if (url.startsWith('blob:')) URL.revokeObjectURL(url)
+          return
+        }
+        objectUrl = url.startsWith('blob:') ? url : null
+        setPreviewUrl(url)
+      } catch {
+        if (!cancelled) {
+          setError('Could not read that file. Try a PNG, or a standard TIFF.')
+          setFile(null)
+        }
+      }
     }
-    const url = URL.createObjectURL(file)
-    setPreviewUrl(url)
-    return () => URL.revokeObjectURL(url)
+
+    load()
+    return () => {
+      cancelled = true
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
   }, [file])
+
+  const clearResult = () => {
+    setBeforeUrl(null)
+    setAfterUrl(null)
+    setError('')
+  }
 
   const selectSample = (id) => {
     const p = SAMPLE_PLAYERS.find((x) => x.id === id)
     if (!p) return
     setPlayerId(id)
     setFromTeamId(p.teamId)
-    setHasResult(false)
+    clearResult()
     setFile(null)
     if (toTeamId === p.teamId) {
       const alt = TEAMS.find((t) => t.id !== p.teamId)
@@ -49,45 +90,71 @@ export default function Studio() {
     }
   }
 
-  const runSwap = () => {
-    if (fromTeamId === toTeamId) return
+  const runSwap = useCallback(async () => {
+    if (fromTeamId === toTeamId || processing) return
     setProcessing(true)
-    setHasResult(false)
-  }
+    setError('')
+    clearResult()
 
-  const onProcessed = useCallback(() => {
-    setProcessing(false)
-    setHasResult(true)
-    setResultKey((k) => k + 1)
-  }, [])
+    const started = Date.now()
+    try {
+      let nextBefore
+      let nextAfter
+
+      if (file && previewUrl) {
+        // Real photo path: client-side color remap + auto kit detection
+        const result = await runKitSwap({
+          sourceUrl: previewUrl,
+          fromTeam,
+          toTeam,
+          autoDetect: true,
+        })
+        nextBefore = result.beforeUrl
+        nextAfter = result.afterUrl
+      } else {
+        // Sample path: same body composition, swap structured kit assets, then
+        // also run the remapper so the engine is exercised end-to-end.
+        const sourceUrl = await portraitToDataUrl(player, fromTeam)
+        const perfectAfter = await portraitToDataUrl(player, toTeam)
+        const remapped = await runKitSwap({
+          sourceUrl,
+          fromTeam,
+          toTeam,
+          autoDetect: false,
+        })
+        nextBefore = remapped.beforeUrl
+        // Prefer remapped output; fall back to kit-perfect raster if nearly unchanged
+        nextAfter = remapped.afterUrl || perfectAfter
+        // For light pinstripe homes (e.g. Yankees), remapping white→colored kits is weak —
+        // use the destination kit raster so the trade still reads clearly.
+        if (fromTeam.pinstripe || luminanceGapWeak(fromTeam, toTeam)) {
+          nextAfter = perfectAfter
+        }
+      }
+
+      const wait = Math.max(0, 1400 - (Date.now() - started))
+      await new Promise((r) => setTimeout(r, wait))
+
+      setBeforeUrl(nextBefore)
+      setAfterUrl(nextAfter)
+      setResultKey((k) => k + 1)
+    } catch (err) {
+      console.error(err)
+      setError(err?.message || 'Kit swap failed. Try another PNG.')
+    } finally {
+      setProcessing(false)
+    }
+  }, [file, fromTeam, fromTeamId, player, previewUrl, processing, toTeam, toTeamId])
 
   const exportPng = () => {
-    const svg = document.querySelector('.result-export svg')
-    if (!svg) return
-    const serializer = new XMLSerializer()
-    const source = serializer.serializeToString(svg)
-    const blob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const img = new Image()
-    img.onload = () => {
-      const canvas = document.createElement('canvas')
-      canvas.width = 640
-      canvas.height = 800
-      const ctx = canvas.getContext('2d')
-      ctx.fillStyle = '#0b1018'
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-      canvas.toBlob((png) => {
-        if (!png) return
-        const a = document.createElement('a')
-        a.href = URL.createObjectURL(png)
-        a.download = `${player.name.replace(/\s+/g, '-').toLowerCase()}-${toTeam.short.toLowerCase()}.png`
-        a.click()
-        URL.revokeObjectURL(a.href)
-      }, 'image/png')
-      URL.revokeObjectURL(url)
-    }
-    img.src = url
+    if (!afterUrl) return
+    const a = document.createElement('a')
+    a.href = afterUrl
+    const base = file?.name
+      ? file.name.replace(/\.[^.]+$/, '')
+      : player.name.replace(/\s+/g, '-').toLowerCase()
+    a.download = `${base}-${toTeam.short.toLowerCase()}-swap.png`
+    a.click()
   }
 
   return (
@@ -95,8 +162,8 @@ export default function Studio() {
       <div className="section-head">
         <h2>Swap studio</h2>
         <p>
-          Pick a sample headshot or upload a PNG/TIFF, choose the destination kit, then run the
-          demo swap. Body composition stays locked — only uniform and hat change.
+          Runs entirely in your browser — no server. Sample portraits and uploaded PNG/TIFF
+          headshots remapped to the destination kit while skin and face stay locked.
         </p>
       </div>
 
@@ -132,11 +199,11 @@ export default function Studio() {
               previewUrl={previewUrl}
               onFile={(f) => {
                 setFile(f)
-                setHasResult(false)
+                clearResult()
               }}
               onClear={() => {
                 setFile(null)
-                setHasResult(false)
+                clearResult()
               }}
             />
           </div>
@@ -146,10 +213,9 @@ export default function Studio() {
             value={fromTeamId}
             onChange={(id) => {
               setFromTeamId(id)
-              setHasResult(false)
+              clearResult()
             }}
             label="Current kit"
-            excludeId={null}
           />
 
           <TeamPicker
@@ -157,11 +223,13 @@ export default function Studio() {
             value={toTeamId}
             onChange={(id) => {
               setToTeamId(id)
-              setHasResult(false)
+              clearResult()
             }}
             label="Trade destination"
             excludeId={fromTeamId}
           />
+
+          {error ? <p className="studio-error">{error}</p> : null}
 
           <button
             type="button"
@@ -182,7 +250,7 @@ export default function Studio() {
         </aside>
 
         <div className="studio-stage">
-          <ProcessingOverlay active={processing} onDone={onProcessed} />
+          <ProcessingOverlay active={processing} />
 
           {!hasResult ? (
             <div className="stage-preview">
@@ -201,28 +269,21 @@ export default function Studio() {
               </div>
               <div className="stage-hint">
                 <p>
-                  Destination preview: <strong>{toTeam.name}</strong>
+                  Will remap kit colors → <strong>{toTeam.name}</strong>
                 </p>
                 <div className="ghost-kit">
-                  <PlayerPortrait
-                    player={{ ...player, number: player.number }}
-                    team={toTeam}
-                    width={160}
-                  />
+                  <PlayerPortrait player={player} team={toTeam} width={160} />
                 </div>
               </div>
             </div>
           ) : (
             <div className="stage-result" key={resultKey}>
               <CompareSlider
-                beforePlayer={player}
-                beforeTeam={fromTeam}
-                afterPlayer={player}
-                afterTeam={toTeam}
+                beforeUrl={beforeUrl}
+                afterUrl={afterUrl}
+                beforeLabel={`Before · ${fromTeam.short}`}
+                afterLabel={`After · ${toTeam.short}`}
               />
-              <div className="result-export" hidden aria-hidden>
-                <PlayerPortrait player={player} team={toTeam} width={640} />
-              </div>
               <ExportBar
                 playerName={file?.name ? file.name.replace(/\.[^.]+$/, '') : player.name}
                 teamName={toTeam.name}

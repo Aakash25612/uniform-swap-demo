@@ -1,12 +1,22 @@
 # TradeKit — Uniform & Hat Swap Demo
 
-Frontend-only React demo for swapping a sports player's **uniform and hat** (chest-up) onto a new team kit while keeping the same body composition — built for trade-day creative workflows.
+Working **client-side** React demo that remaps a player's jersey and hat colors to another team kit (chest-up), while protecting skin/face. No backend required.
+
+## What actually runs in the browser
+
+1. Load a sample portrait or upload **PNG / TIFF**
+2. Rasterize / decode the image on a canvas
+3. Detect or match current kit colors
+4. Remap jersey + hat pixels toward the destination team palette
+5. Compare before/after and export PNG
+
+TIFF decode uses `utif2` entirely in-browser.
 
 ## Stack
 
 - React 19 + Vite
-- Pure CSS (no UI kit)
-- Vercel-ready (`vercel.json` SPA rewrite)
+- Canvas color remapping (`src/lib/kitSwap.js`)
+- Vercel-ready (`vercel.json`)
 
 ## Run locally
 
@@ -24,17 +34,14 @@ npm run preview
 
 ## Deploy (Vercel)
 
-Connect the repo to Vercel, or:
+Import the GitHub repo (Vite preset, output `dist`) or:
 
 ```bash
 npx vercel
 ```
 
-Framework preset: Vite. Build command `npm run build`, output `dist`.
+## Limits (honest demo)
 
-## Demo notes
-
-- Sample players illustrate kit swaps across MLB-style franchises.
-- Upload accepts **PNG / TIFF** (UI-level); swap animation is simulated for the pitch.
-- Export downloads a PNG of the after-kit portrait.
-- Production would replace the mock portrait with licensed assets + ML segmentation / inpainting.
+- Color remapping, not generative AI — best on clear chest-up kits with distinct team colors
+- Uploaded photos use auto color detection + spatial masks; results vary by photo
+- Production path: licensed kits + ML segmentation / inpainting for photo-real trades

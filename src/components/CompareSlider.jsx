@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import PlayerPortrait from './PlayerPortrait'
 
-export default function CompareSlider({ beforePlayer, beforeTeam, afterPlayer, afterTeam }) {
+export default function CompareSlider({ beforeUrl, afterUrl, beforeLabel, afterLabel }) {
   const trackRef = useRef(null)
   const [pos, setPos] = useState(50)
   const dragging = useRef(false)
@@ -46,12 +45,12 @@ export default function CompareSlider({ beforePlayer, beforeTeam, afterPlayer, a
         }}
       >
         <div className="compare-layer compare-after">
-          <PlayerPortrait player={afterPlayer} team={afterTeam} width={340} />
-          <span className="compare-tag after">After · {afterTeam.short}</span>
+          <img src={afterUrl} alt={afterLabel || 'After kit swap'} draggable={false} />
+          <span className="compare-tag after">{afterLabel || 'After'}</span>
         </div>
         <div className="compare-layer compare-before" style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}>
-          <PlayerPortrait player={beforePlayer} team={beforeTeam} width={340} />
-          <span className="compare-tag before">Before · {beforeTeam.short}</span>
+          <img src={beforeUrl} alt={beforeLabel || 'Before kit swap'} draggable={false} />
+          <span className="compare-tag before">{beforeLabel || 'Before'}</span>
         </div>
         <div className="compare-handle" style={{ left: `${pos}%` }} aria-hidden>
           <div className="compare-line" />

@@ -68,7 +68,7 @@ export function HowItWorks() {
     <section className="section" id="how">
       <div className="section-head">
         <h2>Built for trade-day creative</h2>
-        <p>Frontend demo of the workflow your production app would drive with model inference.</p>
+        <p>This build runs a real client-side color remap in-browser. Production would swap in ML segmentation for photo-real results.</p>
       </div>
       <div className="feature-row">
         {items.map(({ icon: Icon, title, text }) => (
@@ -125,9 +125,10 @@ export function Footer() {
         </span>
         <span className="brand-name">TradeKit</span>
       </div>
-      <p>Frontend-only demo · React + Vite · Vercel ready</p>
+      <p>Client-side kit swap · React + Vite · Vercel ready · no server</p>
       <p className="fine">
-        Kit graphics are illustrative placeholders — production would use licensed team assets + ML swap.
+        Demo remaps jersey/hat colors in the browser. Sample portraits are illustrative; production
+        would use licensed team assets and ML segmentation.
       </p>
     </footer>
   )

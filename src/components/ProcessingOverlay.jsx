@@ -9,7 +9,7 @@ const STEPS = [
   'Refining edges & lighting',
 ]
 
-export default function ProcessingOverlay({ active, onDone }) {
+export default function ProcessingOverlay({ active }) {
   const [step, setStep] = useState(0)
 
   useEffect(() => {
@@ -20,14 +20,10 @@ export default function ProcessingOverlay({ active, onDone }) {
 
     setStep(0)
     const timers = STEPS.map((_, i) =>
-      window.setTimeout(() => setStep(i + 1), (i + 1) * 700),
+      window.setTimeout(() => setStep(Math.min(i + 1, STEPS.length)), (i + 1) * 450),
     )
-    const done = window.setTimeout(() => onDone?.(), STEPS.length * 700 + 400)
-    return () => {
-      timers.forEach(clearTimeout)
-      clearTimeout(done)
-    }
-  }, [active, onDone])
+    return () => timers.forEach(clearTimeout)
+  }, [active])
 
   if (!active) return null
 
@@ -36,7 +32,7 @@ export default function ProcessingOverlay({ active, onDone }) {
       <div className="processing-card">
         <div className="processing-orb" aria-hidden />
         <h3>Running kit swap</h3>
-        <p>Preserving body composition · chest-up only</p>
+        <p>Client-side · no server · preserving body composition</p>
         <ul className="processing-steps">
           {STEPS.map((label, i) => {
             const done = step > i
