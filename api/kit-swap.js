@@ -3,7 +3,7 @@ import { handleKitSwapRequest } from '../shared/openaiEdit.js'
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: '12mb',
+      sizeLimit: '16mb',
     },
   },
 }
@@ -24,10 +24,11 @@ export default async function handler(req, res) {
   }
 
   try {
-    const result = await handleKitSwapRequest(req.body)
+    const body = { ...(req.body || {}) }
+    delete body.apiKey
+    const result = await handleKitSwapRequest(body)
     res.status(200).json(result)
   } catch (err) {
-    const status = err.status || 500
-    res.status(status).json({ error: err.message || 'Kit swap failed' })
+    res.status(err.status || 500).json({ error: err.message || 'Kit swap failed' })
   }
 }

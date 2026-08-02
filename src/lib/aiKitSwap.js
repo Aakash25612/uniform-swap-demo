@@ -1,22 +1,3 @@
-const KEY_STORAGE = 'tradekit_openai_key'
-
-export function getStoredApiKey() {
-  try {
-    return sessionStorage.getItem(KEY_STORAGE) || ''
-  } catch {
-    return ''
-  }
-}
-
-export function setStoredApiKey(key) {
-  try {
-    if (key) sessionStorage.setItem(KEY_STORAGE, key)
-    else sessionStorage.removeItem(KEY_STORAGE)
-  } catch {
-    // ignore
-  }
-}
-
 async function blobToBase64(blob) {
   const buffer = await blob.arrayBuffer()
   let binary = ''
@@ -28,12 +9,11 @@ async function blobToBase64(blob) {
   return btoa(binary)
 }
 
-/** Downscale large uploads before sending to the API. */
 export async function prepareImagePayload(sourceUrl, maxEdge = 1536) {
   const img = await new Promise((resolve, reject) => {
     const el = new Image()
     el.onload = () => resolve(el)
-    el.onerror = () => reject(new Error('Could not load source image'))
+    el.onerror = () => reject(new Error('Could not load image'))
     el.crossOrigin = 'anonymous'
     el.src = sourceUrl
   })
@@ -49,32 +29,38 @@ export async function prepareImagePayload(sourceUrl, maxEdge = 1536) {
 
   const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'))
   if (!blob) throw new Error('Could not encode PNG')
-  const imageBase64 = await blobToBase64(blob)
-  const beforeUrl = canvas.toDataURL('image/png')
-  return { imageBase64, beforeUrl, mimeType: 'image/png', width: w, height: h }
+  return {
+    imageBase64: await blobToBase64(blob),
+    previewUrl: canvas.toDataURL('image/png'),
+    mimeType: 'image/png',
+  }
 }
 
-export async function requestAiKitSwap({ sourceUrl, fromTeam, toTeam, apiKey }) {
-  const prepared = await prepareImagePayload(sourceUrl)
+/**
+ * Client never sends an API key — the server holds OPENAI_API_KEY.
+ */
+export async function requestAiKitSwap({ playerUrl, referenceUrl }) {
+  const [player, reference] = await Promise.all([
+    prepareImagePayload(playerUrl),
+    prepareImagePayload(referenceUrl),
+  ])
+
   const res = await fetch('/api/kit-swap', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      imageBase64: prepared.imageBase64,
-      mimeType: prepared.mimeType,
-      fromTeam,
-      toTeam,
-      apiKey,
+      playerBase64: player.imageBase64,
+      referenceBase64: reference.imageBase64,
+      playerMime: player.mimeType,
+      referenceMime: reference.mimeType,
     }),
   })
 
   const json = await res.json().catch(() => ({}))
-  if (!res.ok) {
-    throw new Error(json.error || `Swap failed (${res.status})`)
-  }
+  if (!res.ok) throw new Error(json.error || `Swap failed (${res.status})`)
 
   return {
-    beforeUrl: prepared.beforeUrl,
+    beforeUrl: player.previewUrl,
     afterUrl: json.imageBase64,
     model: json.model,
   }
