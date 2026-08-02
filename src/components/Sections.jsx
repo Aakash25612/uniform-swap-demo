@@ -29,8 +29,8 @@ export function Hero() {
         <p className="eyebrow">Chest-up uniform & hat swap</p>
         <h1 className="brand-hero">TradeKit</h1>
         <p className="lede">
-          Switch a traded player into a new team kit — same body, new jersey and hat —
-          ready for your headshot templates.
+          Take a media-day headshot and put a traded player in a new cap and jersey — same face,
+          same body — studio quality.
         </p>
         <div className="hero-cta">
           <a className="btn btn-primary" href="#studio">
@@ -68,7 +68,7 @@ export function HowItWorks() {
     <section className="section" id="how">
       <div className="section-head">
         <h2>Built for trade-day creative</h2>
-        <p>This build runs a real client-side color remap in-browser. Production would swap in ML segmentation for photo-real results.</p>
+        <p>OpenAI image edit for photo-real trades, with a local remap fallback when no key is set.</p>
       </div>
       <div className="feature-row">
         {items.map(({ icon: Icon, title, text }) => (
@@ -125,10 +125,10 @@ export function Footer() {
         </span>
         <span className="brand-name">TradeKit</span>
       </div>
-      <p>Client-side kit swap · React + Vite · Vercel ready · no server</p>
+      <p>Client-side studio + optional OpenAI GPT Image edits · React + Vite · Vercel ready</p>
       <p className="fine">
-        Demo remaps jersey/hat colors in the browser. Sample portraits are illustrative; production
-        would use licensed team assets and ML segmentation.
+        Demo samples are real-style media headshots. AI mode replaces cap and jersey only; always
+        review outputs before publishing. Use licensed team marks in production.
       </p>
     </footer>
   )

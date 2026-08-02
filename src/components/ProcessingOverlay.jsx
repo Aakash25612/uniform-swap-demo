@@ -9,7 +9,7 @@ const STEPS = [
   'Refining edges & lighting',
 ]
 
-export default function ProcessingOverlay({ active }) {
+export default function ProcessingOverlay({ active, ai = false }) {
   const [step, setStep] = useState(0)
 
   useEffect(() => {
@@ -19,11 +19,12 @@ export default function ProcessingOverlay({ active }) {
     }
 
     setStep(0)
+    const intervalMs = ai ? 900 : 450
     const timers = STEPS.map((_, i) =>
-      window.setTimeout(() => setStep(Math.min(i + 1, STEPS.length)), (i + 1) * 450),
+      window.setTimeout(() => setStep(Math.min(i + 1, STEPS.length)), (i + 1) * intervalMs),
     )
     return () => timers.forEach(clearTimeout)
-  }, [active])
+  }, [active, ai])
 
   if (!active) return null
 
@@ -31,8 +32,12 @@ export default function ProcessingOverlay({ active }) {
     <div className="processing" role="status" aria-live="polite">
       <div className="processing-card">
         <div className="processing-orb" aria-hidden />
-        <h3>Running kit swap</h3>
-        <p>Client-side · no server · preserving body composition</p>
+        <h3>{ai ? 'AI kit swap' : 'Running kit swap'}</h3>
+        <p>
+          {ai
+            ? 'GPT Image · preserving face & body · cap + jersey only'
+            : 'Client-side remap · preserving body composition'}
+        </p>
         <ul className="processing-steps">
           {STEPS.map((label, i) => {
             const done = step > i

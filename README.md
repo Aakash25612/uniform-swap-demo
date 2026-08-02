@@ -1,22 +1,19 @@
 # TradeKit — Uniform & Hat Swap Demo
 
-Working **client-side** React demo that remaps a player's jersey and hat colors to another team kit (chest-up), while protecting skin/face. No backend required.
+Photo-real **chest-up** baseball kit swaps for trade-day creatives. Uses your real media-day style headshots plus optional **OpenAI GPT Image** edits (cap + jersey only, face/body locked).
 
-## What actually runs in the browser
+## Modes
 
-1. Load a sample portrait or upload **PNG / TIFF**
-2. Rasterize / decode the image on a canvas
-3. Detect or match current kit colors
-4. Remap jersey + hat pixels toward the destination team palette
-5. Compare before/after and export PNG
+1. **AI swap (recommended)** — paste an OpenAI API key in the studio. Calls `/api/kit-swap` → `images/edits` (`gpt-image-1.5` with fallbacks).
+2. **Local remap** — no key; basic canvas color remap (not photo-real).
 
-TIFF decode uses `utif2` entirely in-browser.
+The key stays in `sessionStorage` only. Prefer setting `OPENAI_API_KEY` on Vercel for production so the browser never holds the key.
 
 ## Stack
 
 - React 19 + Vite
-- Canvas color remapping (`src/lib/kitSwap.js`)
-- Vercel-ready (`vercel.json`)
+- `/api/kit-swap` Vercel function (+ Vite middleware for local)
+- Sample assets in `public/samples/`
 
 ## Run locally
 
@@ -25,23 +22,18 @@ npm install
 npm run dev
 ```
 
-## Build
-
-```bash
-npm run build
-npm run preview
-```
+Open the app → paste OpenAI key in **Swap studio** → pick a sample → choose destination team → **Generate AI kit swap**.
 
 ## Deploy (Vercel)
-
-Import the GitHub repo (Vite preset, output `dist`) or:
 
 ```bash
 npx vercel
 ```
 
-## Limits (honest demo)
+Optional env: `OPENAI_API_KEY` (then the UI key field can be left empty).
 
-- Color remapping, not generative AI — best on clear chest-up kits with distinct team colors
-- Uploaded photos use auto color detection + spatial masks; results vary by photo
-- Production path: licensed kits + ML segmentation / inpainting for photo-real trades
+## Notes
+
+- GPT Image models may require org verification in the OpenAI dashboard.
+- Results are generative — always review before publishing.
+- For production, move the key server-side only and add rate limits.
